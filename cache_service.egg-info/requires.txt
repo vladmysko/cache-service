@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+pydantic-settings
+httpx
+
+[dev]
+pytest
+pytest-cov
