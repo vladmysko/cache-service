@@ -16,6 +16,9 @@ class PayloadService:
         self.cache_repository = TransformCacheRepository(session)
         self.payload_repository = PayloadRepository(session)
 
+    def get(self, payload_id: str) -> Payload | None:
+        return self.payload_repository.get_by_id(payload_id)
+
     def create_or_get(
         self,
         list_1: list[str],

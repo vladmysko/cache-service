@@ -7,6 +7,9 @@ class PayloadRepository:
     def __init__(self, session: Session):
         self.session = session
 
+    def get_by_id(self, payload_id: str) -> Payload | None:
+        return self.session.get(Payload, payload_id)
+
     def get_by_fingerprint(self, fingerprint: str) -> Payload | None:
         statement = select(Payload).where(
             Payload.fingerprint == fingerprint
