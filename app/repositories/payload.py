@@ -10,8 +10,8 @@ class PayloadRepository:
     def get_by_id(self, payload_id: str) -> Payload | None:
         return self.session.get(Payload, payload_id)
 
-    def get_by_output(self, output: str) -> Payload | None:
-        statement = select(Payload).where(Payload.output == output)
+    def get_by_fingerprint(self, fingerprint: str) -> Payload | None:
+        statement = select(Payload).where(Payload.fingerprint == fingerprint)
         return self.session.exec(statement).first()
 
     def create(

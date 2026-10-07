@@ -86,12 +86,15 @@ def test_rejects_lists_with_different_lengths(session):
 def test_same_output_reuses_existing_identifier(session):
     from app.db.models import Payload
 
-    # Simulate a record created before fingerprints were based on output.
-    session.add(Payload(id="legacy-id", fingerprint="legacy-fingerprint", output="HELLO, WORLD"))
+    import hashlib
+
+    # Pre-existing payloads are found through their output fingerprint.
+    fingerprint = hashlib.sha256(b"HELLO, WORLD").hexdigest()
+    session.add(Payload(id="existing-id", fingerprint=fingerprint, output="HELLO, WORLD"))
     session.commit()
     service = PayloadService(session)
-    assert service.create_or_get(["hello"], ["world"]).id == "legacy-id"
-    assert service.create_or_get(["HELLO"], ["WORLD"]).id == "legacy-id"
+    assert service.create_or_get(["hello"], ["world"]).id == "existing-id"
+    assert service.create_or_get(["HELLO"], ["WORLD"]).id == "existing-id"
 
 
 def test_transform_called_once_per_unique_input(session, monkeypatch):

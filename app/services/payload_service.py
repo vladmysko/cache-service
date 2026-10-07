@@ -55,12 +55,12 @@ class PayloadService:
 
         output = ", ".join(output_values)
 
-        existing_payload = self.payload_repository.get_by_output(output)
+        fingerprint = hashlib.sha256(output.encode("utf-8")).hexdigest()
+        existing_payload = self.payload_repository.get_by_fingerprint(fingerprint)
         if existing_payload is not None:
             self.session.commit()
             return existing_payload
 
-        fingerprint = hashlib.sha256(output.encode("utf-8")).hexdigest()
         payload = self.payload_repository.create(
             payload_id=str(uuid4()),
             fingerprint=fingerprint,
