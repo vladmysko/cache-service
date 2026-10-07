@@ -80,3 +80,19 @@ def test_mismatched_lists_return_422(client):
     )
 
     assert response.status_code == 422
+
+def test_different_inputs_with_same_output_return_same_id(client):
+    first = client.post('/payload', json={'list_1': ['hello'], 'list_2': ['world']})
+    second = client.post('/payload', json={'list_1': ['HELLO'], 'list_2': ['WORLD']})
+    assert first.status_code == second.status_code == 201
+    assert first.json() == second.json()
+    assert client.get(f"/payload/{second.json()['id']}").json() == {'output': 'HELLO, WORLD'}
+
+
+def test_empty_payload_can_be_reused(client):
+    request = {'list_1': [], 'list_2': []}
+    first = client.post('/payload', json=request)
+    second = client.post('/payload', json=request)
+    assert first.status_code == second.status_code == 201
+    assert first.json() == second.json()
+    assert client.get(f"/payload/{first.json()['id']}").json() == {'output': ''}

@@ -1,7 +1,7 @@
 import hashlib
-import json
 from uuid import uuid4
 
+from sqlalchemy import text
 from sqlmodel import Session
 
 from app.db.models import Payload
@@ -27,15 +27,20 @@ class PayloadService:
         if len(list_1) != len(list_2):
             raise ValueError("Input lists must have the same length")
 
-        fingerprint = self._build_fingerprint(list_1, list_2)
+        try:
+            dialect = self.session.get_bind().dialect.name
+            if dialect == "sqlite":
+                self.session.execute(text("BEGIN IMMEDIATE"))
+            elif dialect == "postgresql":
+                self.session.execute(text("SELECT pg_advisory_xact_lock(74192031)"))
+            else:
+                raise ValueError("Only SQLite and PostgreSQL are supported")
+            return self._generate(list_1, list_2)
+        except Exception:
+            self.session.rollback()
+            raise
 
-        existing_payload = self.payload_repository.get_by_fingerprint(
-            fingerprint
-        )
-
-        if existing_payload is not None:
-            return existing_payload
-
+    def _generate(self, list_1: list[str], list_2: list[str]) -> Payload:
         request_cache: dict[str, str] = {}
 
         output_values: list[str] = []
@@ -50,6 +55,12 @@ class PayloadService:
 
         output = ", ".join(output_values)
 
+        existing_payload = self.payload_repository.get_by_output(output)
+        if existing_payload is not None:
+            self.session.commit()
+            return existing_payload
+
+        fingerprint = hashlib.sha256(output.encode("utf-8")).hexdigest()
         payload = self.payload_repository.create(
             payload_id=str(uuid4()),
             fingerprint=fingerprint,
@@ -85,22 +96,3 @@ class PayloadService:
         request_cache[value] = transformed
 
         return transformed
-
-    @staticmethod
-    def _build_fingerprint(
-        list_1: list[str],
-        list_2: list[str],
-    ) -> str:
-        canonical_input = json.dumps(
-            {
-                "list_1": list_1,
-                "list_2": list_2,
-            },
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False,
-        )
-
-        return hashlib.sha256(
-            canonical_input.encode("utf-8")
-        ).hexdigest()

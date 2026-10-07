@@ -27,6 +27,7 @@ class CliSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         cli_parse_args=True,
+        case_sensitive=True,
         cli_shortcuts={
             "host": "H",
             "repeat": "r",

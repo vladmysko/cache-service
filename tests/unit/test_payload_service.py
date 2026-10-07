@@ -82,3 +82,40 @@ def test_rejects_lists_with_different_lengths(session):
         assert str(exc) == "Input lists must have the same length"
     else:
         raise AssertionError("ValueError was not raised")
+
+def test_same_output_reuses_existing_identifier(session):
+    from app.db.models import Payload
+
+    # Simulate a record created before fingerprints were based on output.
+    session.add(Payload(id="legacy-id", fingerprint="legacy-fingerprint", output="HELLO, WORLD"))
+    session.commit()
+    service = PayloadService(session)
+    assert service.create_or_get(["hello"], ["world"]).id == "legacy-id"
+    assert service.create_or_get(["HELLO"], ["WORLD"]).id == "legacy-id"
+
+
+def test_transform_called_once_per_unique_input(session, monkeypatch):
+    from unittest.mock import Mock
+
+    transformer = Mock(side_effect=str.upper)
+    monkeypatch.setattr("app.services.payload_service.transform", transformer)
+    service = PayloadService(session)
+    service.create_or_get(["same", "same"], ["other", "same"])
+    service.create_or_get(["same"], ["new"])
+    assert [call.args[0] for call in transformer.call_args_list] == ["same", "other", "new"]
+
+
+def test_transform_failure_rolls_back_and_allows_retry(session, monkeypatch):
+    import pytest
+
+    def fail(value):
+        if value == "bad":
+            raise RuntimeError("transform failed")
+        return value.upper()
+
+    monkeypatch.setattr("app.services.payload_service.transform", fail)
+    service = PayloadService(session)
+    with pytest.raises(RuntimeError, match="transform failed"):
+        service.create_or_get(["good"], ["bad"])
+    assert session.exec(select(TransformCache)).all() == []
+    assert service.create_or_get(["good"], ["other"]).output == "GOOD, OTHER"
