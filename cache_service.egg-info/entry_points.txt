@@ -1,2 +1,0 @@
-[console_scripts]
-cache-cli = cli.main:main
