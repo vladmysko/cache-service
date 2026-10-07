@@ -18,6 +18,9 @@ dev = [
     "pytest-cov",
 ]
 
+[project.scripts]
+cache-cli = "cli.main:main"
+
 [tool.setuptools.packages.find]
 include = ["app*", "cli*"]
 
